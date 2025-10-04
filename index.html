@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple DSS — Food Expenditure Predictor</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#60a5fa;--glass:rgba(255,255,255,0.04)}
+    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial; background:linear-gradient(180deg,#071127 0%, #071b2a 100%); color:#e6eef8; margin:0; padding:32px;}
+    .wrap{max-width:900px;margin:0 auto}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:22px}
+    h1{font-size:20px;margin:0}
+    p.lead{color:var(--muted);margin:4px 0 0;font-size:13px}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;font-size:15px}
+    .btn{display:inline-block;padding:10px 12px;border-radius:10px;background:linear-gradient(90deg,#3b82f6,#60a5fa);color:#04203a;border:none;cursor:pointer;font-weight:600}
+    .result{margin-top:10px;padding:12px;border-radius:10px;background:linear-gradient(90deg, rgba(96,165,250,0.06), rgba(59,130,246,0.03));color:#dff3ff}
+    .muted{color:var(--muted);font-size:13px}
+    pre{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;overflow:auto;color:#cfe9ff}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    td,th{padding:8px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03)}
+    .footer{margin-top:14px;color:var(--muted);font-size:13px}
+    @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="width:56px;height:56px;border-radius:10px;background:linear-gradient(180deg,#0ea5e9,#0369a1);display:flex;align-items:center;justify-content:center;font-weight:700;color:white">DSS</div>
+      <div>
+        <h1>Food Expenditure Predictor — Simple DSS</h1>
+        <p class="lead">Predict monthly food spending using a multiple linear regression model.</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <h3 style="margin-top:0">Inputs</h3>
+          <div style="margin-bottom:12px">
+            <label for="income">Income (RM)</label>
+            <input id="income" type="number" step="0.01" value="50" />
+          </div>
+          <div style="margin-bottom:12px">
+            <label for="family">Family size (persons)</label>
+            <input id="family" type="number" step="1" value="3" />
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center">
+            <button id="predictBtn" class="btn">Predict Food</button>
+            <button id="sampleBtn" class="btn" style="background:linear-gradient(90deg,#10b981,#34d399)">Load Sample</button>
+          </div>
+
+          <div class="result" id="resultBox" style="display:none">
+            <div style="font-size:15px;font-weight:700">Predicted Food Expenditure: <span id="predVal">—</span> </div>
+            <div class="muted" id="predDetail"></div>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="margin-top:0">Model & Info</h3>
+          <div class="muted">Model: multiple linear regression built from sample dataset (n=20).</div>
+          <pre id="equation">Food = -1.1183 + 0.1482 × Income + 0.7931 × Family</pre>
+
+          <table>
+            <tr><th>Statistic</th><th>Value</th></tr>
+            <tr><td>R-squared</td><td>0.935</td></tr>
+            <tr><td>Adj. R-squared</td><td>0.927</td></tr>
+            <tr><td>Observations</td><td>20</td></tr>
+          </table>
+
+          <div class="footer">
+            <strong>How it works:</strong> enter Income and Family size → click <em>Predict Food</em>. The formula uses the regression coefficients estimated from the dataset you provided.
+          </div>
+
+        </div>
+      </div>
+
+      <hr style="margin:18px 0;border-color:rgba(255,255,255,0.02)" />
+
+      <h3 style="margin:0 0 8px 0">Quick Examples</h3>
+      <div class="muted">Click "Load Sample" to try a few recorded data points and compare predicted vs actual.</div>
+
+      <div id="sampleTable"></div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+        <button id="downloadBtn" class="btn" style="background:linear-gradient(90deg,#7c3aed,#a78bfa)">Download HTML</button>
+        <button id="copyBtn" class="btn" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)">Copy HTML to Clipboard</button>
+      </div>
+
+    </div>
+
+    <div style="margin-top:10px;color:var(--muted);font-size:13px">Generated for GitHub usage — open this file in a browser to run the DSS offline.</div>
+  </div>
+
+  <script>
+    // Regression coefficients from model
+    const COEF = {intercept: -1.1183, income: 0.1482, family: 0.7931};
+
+    const incomeEl = document.getElementById('income');
+    const familyEl = document.getElementById('family');
+    const predictBtn = document.getElementById('predictBtn');
+    const resultBox = document.getElementById('resultBox');
+    const predVal = document.getElementById('predVal');
+    const predDetail = document.getElementById('predDetail');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const sampleTable = document.getElementById('sampleTable');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const copyBtn = document.getElementById('copyBtn');
+
+    // original dataset (20 rows) — for sample testing
+    const DATA = [
+      {food:5.2, income:28, family:3}, {food:5.1, income:26, family:3}, {food:5.6, income:32, family:2},
+      {food:4.6, income:24, family:1}, {food:11.3, income:54, family:4}, {food:8.1, income:59, family:2},
+      {food:7.8, income:44, family:3}, {food:5.8, income:30, family:2}, {food:5.1, income:40, family:1},
+      {food:18.0, income:82, family:6}, {food:4.9, income:42, family:3}, {food:11.8, income:58, family:4},
+      {food:5.2, income:28, family:1}, {food:4.8, income:20, family:5}, {food:7.9, income:42, family:3},
+      {food:6.4, income:47, family:1}, {food:20.0, income:112, family:6}, {food:13.7, income:85, family:5},
+      {food:5.1, income:31, family:2}, {food:2.9, income:26, family:2}
+    ];
+
+    function predict(income, family){
+      const val = COEF.intercept + COEF.income * Number(income) + COEF.family * Number(family);
+      return Math.round(val * 100) / 100;
+    }
+
+    predictBtn.addEventListener('click', ()=>{
+      const inc = parseFloat(incomeEl.value);
+      const fam = parseFloat(familyEl.value);
+      if(Number.isNaN(inc) || Number.isNaN(fam)) return alert('Please enter numeric Income and Family size.');
+      const p = predict(inc,fam);
+      predVal.textContent = 'RM ' + p.toFixed(2);
+      predDetail.textContent = `Using: Food = ${COEF.intercept} + ${COEF.income}×Income + ${COEF.family}×Family`;
+      resultBox.style.display = 'block';
+    });
+
+    sampleBtn.addEventListener('click', ()=>{
+      // build table comparing actual vs predicted for first 8 samples
+      const rows = DATA.slice(0,8).map((r, i)=>{
+        const p = predict(r.income, r.family);
+        return `<tr><td>${i+1}</td><td>${r.income}</td><td>${r.family}</td><td>${r.food}</td><td>${p}</td></tr>`;
+      }).join('');
+      sampleTable.innerHTML = `<table><thead><tr><th>#</th><th>Income</th><th>Family</th><th>Actual Food</th><th>Predicted Food</th></tr></thead><tbody>${rows}</tbody></table>`;
+      window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+    });
+
+    // Download the current HTML file content
+    downloadBtn.addEventListener('click', ()=>{
+      const html = '<!doctype html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([html], {type: 'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'simple_dss_food_predictor.html';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // Copy HTML to clipboard
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        const html = '<!doctype html>\n' + document.documentElement.outerHTML;
+        await navigator.clipboard.writeText(html);
+        alert('HTML copied to clipboard. You can paste into a file and save it as .html');
+      }catch(e){
+        alert('Copy failed — your browser may restrict clipboard access. Use Download instead.');
+      }
+    });
+
+  </script>
+</body>
+</html>
